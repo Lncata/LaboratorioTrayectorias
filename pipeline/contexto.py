@@ -11,4 +11,4 @@ class ContextoPipeline:
     ruta_entrada: Path
     ruta_salida: Path
     fps: float | None = None
-    unidad: str = "auto"  # "m", "cm", "mm" o "auto"
+    unidad: str = "m"  # "m" o "cm"

@@ -42,9 +42,9 @@ def crear_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--unidad",
-        choices=["auto", "m", "cm", "mm"],
-        default="auto",
-        help="Unidad de las coordenadas en los archivos (por defecto: auto).",
+        choices=["m", "cm"],
+        default="m",
+        help="Unidad de las coordenadas en los archivos (por defecto: m).",
     )
     return parser
 
