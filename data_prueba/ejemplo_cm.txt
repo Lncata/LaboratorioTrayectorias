@@ -1,0 +1,10 @@
+# description: archivo de prueba hecho a mano
+# framerate: 16.00
+# PersID	Frame	X	Y	Z
+1	100	122.0	81.0	175.0
+1	101	127.0	82.0	175.0
+1	102	133.0	84.0	175.0
+2	100	341.0	120.0	168.0
+2	101	337.0	119.0	168.0
+2	102	esto_esta_malo	119.0	168.0
+3	100	50.0
