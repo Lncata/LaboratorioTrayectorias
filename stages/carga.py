@@ -55,7 +55,7 @@ class CargaExperimentos(EtapaPipeline[None, list[Experimento]]):
                 # Comentario: si trae el framerate y no nos dieron --fps, lo guardamos
                 if linea.startswith("#"):
                     if "framerate" in linea and fps is None:
-                        fps = float(linea.split(":")[1])
+                        fps = float(linea.split(":", 1)[1].strip().split()[0])
                     continue
 
                 partes = linea.split()
