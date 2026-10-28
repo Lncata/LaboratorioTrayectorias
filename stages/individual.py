@@ -16,12 +16,16 @@ class AnalisisIndividual(EtapaPipeline[list[Experimento], list[Experimento]]):
     ) -> list[Experimento]:
         """Analiza las trayectorias de cada experimento."""
 
-        if contexto.fps is None or contexto.fps <= 0:
-            raise ValueError("Debe indicar una frecuencia FPS valida")
-
-        fps = contexto.fps
-
         for experimento in experimentos:
+
+            fps = experimento.fps
+
+            if fps is None:
+                fps = contexto.fps
+
+            if fps is None or fps <= 0:
+                raise ValueError(f"FPS invalidos para {experimento.nombre}")
+            
             resultados = {}
 
             for trayectoria in experimento.trayectorias:
