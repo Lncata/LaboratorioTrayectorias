@@ -15,7 +15,44 @@ class AnalisisIndividual(EtapaPipeline[list[Experimento], list[Experimento]]):
         contexto: ContextoPipeline,
     ) -> list[Experimento]:
         """Analiza las trayectorias de cada experimento."""
-        raise NotImplementedError("Etapa pendiente de implementación")
+
+        if contexto.fps is None or contexto.fps <= 0:
+            raise ValueError("Debe indicar una frecuencia FPS valida")
+
+        fps = contexto.fps
+
+        for experimento in experimentos:
+            resultados = {}
+
+            for trayectoria in experimento.trayectorias:
+                # calcular indicadores del peaton
+                indicadores = self._calcular_indicadores(trayectoria, fps)
+
+                # detectar detenciones del peaton
+                detenciones = self._detectar_detenciones(trayectoria, fps)
+
+                # calcular tiempo total detenido 
+                tiempo_detenido = sum((fin - inicio) / fps for inicio, fin in detenciones)
+
+                # calcular porcentaje de tiempo detenido 
+                tiempo_total = indicadores["tiempo_total"]
+
+                porcentaje_detenido = ((tiempo_detenido / tiempo_total) * 100 if tiempo_total > 0 else 0.0)
+
+                # agregar las detenciones a los resultados 
+                indicadores.update({
+                    "cantidad_detenciones": len(detenciones),
+                    "tiempo_detenido": tiempo_detenido,
+                    "porcentaje_detenido": porcentaje_detenido
+                })
+
+                # guardar los indicadores de cada peaton 
+                resultados[trayectoria.id_peaton] = indicadores
+
+            # guardar resultados del exp
+            experimento.resultados_individuales = resultados
+
+        return experimentos
 
     def _calcular_indicadores(
         self,
