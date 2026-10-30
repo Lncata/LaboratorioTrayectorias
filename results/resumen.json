@@ -4,92 +4,92 @@
       "experimento": "uni_corr_500_01",
       "fps": 16.0,
       "cantidad_peatones": 141.0,
-      "velocidad_media": 1.4616543814728373,
-      "densidad_media": 0.22173787110789317,
-      "flujo_medio": 1.6231884057971016,
-      "distancia_media": 18.510021352150545,
-      "tiempo_medio": 12.788563829787234
+      "velocidad_media": 1.4617,
+      "densidad_media": 0.2217,
+      "flujo_medio": 1.6232,
+      "distancia_media": 18.51,
+      "tiempo_medio": 12.7886
     },
     {
       "experimento": "uni_corr_500_02",
       "fps": 25.0,
       "cantidad_peatones": 760.0,
-      "velocidad_media": 1.1920542779295678,
-      "densidad_media": 0.6553181723346098,
-      "flujo_medio": 3.9649415692821366,
-      "distancia_media": 10.193089604146271,
+      "velocidad_media": 1.1921,
+      "densidad_media": 0.6553,
+      "flujo_medio": 3.9649,
+      "distancia_media": 10.1931,
       "tiempo_medio": 8.675
     },
     {
       "experimento": "uni_corr_500_03",
       "fps": 16.0,
       "cantidad_peatones": 915.0,
-      "velocidad_media": 0.945245809927199,
-      "densidad_media": 1.1979782036828157,
-      "flujo_medio": 5.503759398496241,
-      "distancia_media": 12.15532546205611,
-      "tiempo_medio": 13.182513661202186
+      "velocidad_media": 0.9452,
+      "densidad_media": 1.198,
+      "flujo_medio": 5.5038,
+      "distancia_media": 12.1553,
+      "tiempo_medio": 13.1825
     },
     {
       "experimento": "uni_corr_500_04",
       "fps": 16.0,
       "cantidad_peatones": 908.0,
-      "velocidad_media": 0.7470698697642807,
-      "densidad_media": 1.604913571165866,
-      "flujo_medio": 5.3392200147167035,
-      "distancia_media": 12.499072241020897,
-      "tiempo_medio": 18.116258259911895
+      "velocidad_media": 0.7471,
+      "densidad_media": 1.6049,
+      "flujo_medio": 5.3392,
+      "distancia_media": 12.4991,
+      "tiempo_medio": 18.1163
     },
     {
       "experimento": "uni_corr_500_05",
       "fps": 16.0,
       "cantidad_peatones": 932.0,
-      "velocidad_media": 0.7224591539199987,
-      "densidad_media": 1.7215112781954816,
-      "flujo_medio": 5.50582925911997,
-      "distancia_media": 12.128034428972486,
-      "tiempo_medio": 18.177776287553648
+      "velocidad_media": 0.7225,
+      "densidad_media": 1.7215,
+      "flujo_medio": 5.5058,
+      "distancia_media": 12.128,
+      "tiempo_medio": 18.1778
     },
     {
       "experimento": "uni_corr_500_06",
       "fps": 16.0,
       "cantidad_peatones": 951.0,
-      "velocidad_media": 0.6458160942958097,
-      "densidad_media": 1.8912396694215414,
-      "flujo_medio": 5.1703810208483105,
-      "distancia_media": 13.00979759640849,
-      "tiempo_medio": 21.72180599369085
+      "velocidad_media": 0.6458,
+      "densidad_media": 1.8912,
+      "flujo_medio": 5.1704,
+      "distancia_media": 13.0098,
+      "tiempo_medio": 21.7218
     },
     {
       "experimento": "uni_corr_500_07",
       "fps": 16.0,
       "cantidad_peatones": 935.0,
-      "velocidad_media": 0.5444586107955695,
-      "densidad_media": 1.9940192539109636,
-      "flujo_medio": 4.396027685826061,
-      "distancia_media": 12.757202535268537,
-      "tiempo_medio": 25.773663101604278
+      "velocidad_media": 0.5445,
+      "densidad_media": 1.994,
+      "flujo_medio": 4.396,
+      "distancia_media": 12.7572,
+      "tiempo_medio": 25.7737
     },
     {
       "experimento": "uni_corr_500_08",
       "fps": 16.0,
       "cantidad_peatones": 917.0,
-      "velocidad_media": 0.5191798190399156,
-      "densidad_media": 2.1466361556064424,
-      "flujo_medio": 4.16137339055794,
-      "distancia_media": 12.913486395534719,
-      "tiempo_medio": 29.509064885496183
+      "velocidad_media": 0.5192,
+      "densidad_media": 2.1466,
+      "flujo_medio": 4.1614,
+      "distancia_media": 12.9135,
+      "tiempo_medio": 29.5091
     },
     {
       "experimento": "uni_corr_500_09",
       "fps": 16.0,
       "cantidad_peatones": 439.0,
-      "velocidad_media": 0.33017848978225234,
-      "densidad_media": 2.204317566159616,
-      "flujo_medio": 1.177157148812005,
-      "distancia_media": 15.549950419519297,
-      "tiempo_medio": 81.44461845102505
+      "velocidad_media": 0.3302,
+      "densidad_media": 2.2043,
+      "flujo_medio": 1.1772,
+      "distancia_media": 15.55,
+      "tiempo_medio": 81.4446
     }
   ],
-  "correlacion_densidad_velocidad": -0.9902515095739848
+  "correlacion_densidad_velocidad": -0.9903
 }

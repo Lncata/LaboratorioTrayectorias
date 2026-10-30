@@ -70,9 +70,10 @@ class ExportacionResultados(EtapaPipeline[ResultadoAnalisis, None]):
         self._guardar_csv(ruta / "densidad_flujo.csv", series)
         self._guardar_csv(ruta / "experimentos.csv", resumen)
 
+        correlacion = comparacion.get("correlacion_densidad_velocidad")
         resumen_json = {
-            "experimentos": resumen,
-            "correlacion_densidad_velocidad": comparacion.get("correlacion_densidad_velocidad"),
+            "experimentos": [self._redondear(fila) for fila in resumen],
+            "correlacion_densidad_velocidad": round(correlacion, 4) if correlacion is not None else None,
         }
         with open(ruta / "resumen.json", "w", encoding="utf-8") as f:
             json.dump(resumen_json, f, indent=2, ensure_ascii=False)
@@ -81,4 +82,8 @@ class ExportacionResultados(EtapaPipeline[ResultadoAnalisis, None]):
         with open(archivo, "w", newline="", encoding="utf-8") as f:
             escritor = csv.DictWriter(f, fieldnames=list(filas[0].keys()))
             escritor.writeheader()
-            escritor.writerows(filas)
+            for fila in filas:
+                escritor.writerow(self._redondear(fila))
+
+    def _redondear(self, fila: dict) -> dict:
+        return {k: round(v, 4) if isinstance(v, float) else v for k, v in fila.items()}
