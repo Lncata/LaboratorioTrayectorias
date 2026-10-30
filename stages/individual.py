@@ -1,174 +1,89 @@
 """Etapa de análisis individual de los experimentos."""
 
+from math import hypot
+
 from models.experimento import Experimento
 from models.trayectoria import Trayectoria
 from pipeline.contexto import ContextoPipeline
 from pipeline.etapa import EtapaPipeline
-from math import hypot
+
+UMBRAL_DETENCION = 0.1
+
 
 class AnalisisIndividual(EtapaPipeline[list[Experimento], list[Experimento]]):
-    """Coordina el análisis de múltiples trayectorias y reúne sus indicadores."""
+    """Calcula los indicadores de cada peatón."""
 
-    def ejecutar(
-        self,
-        experimentos: list[Experimento],
-        contexto: ContextoPipeline,
-    ) -> list[Experimento]:
-        """Analiza las trayectorias de cada experimento."""
-
+    def ejecutar(self, experimentos: list[Experimento], contexto: ContextoPipeline) -> list[Experimento]:
         for experimento in experimentos:
-
             fps = experimento.fps
-
-            if fps is None:
-                fps = contexto.fps
-
-            if fps is None or fps <= 0:
-                raise ValueError(f"FPS invalidos para {experimento.nombre}")
-            
             resultados = {}
 
             for trayectoria in experimento.trayectorias:
-                # calcular indicadores del peaton
                 indicadores = self._calcular_indicadores(trayectoria, fps)
-
-                # detectar detenciones del peaton
                 detenciones = self._detectar_detenciones(trayectoria, fps)
 
-                # calcular tiempo total detenido 
                 tiempo_detenido = sum((fin - inicio) / fps for inicio, fin in detenciones)
-
-                # calcular porcentaje de tiempo detenido 
                 tiempo_total = indicadores["tiempo_total"]
 
-                porcentaje_detenido = ((tiempo_detenido / tiempo_total) * 100 if tiempo_total > 0 else 0.0)
+                indicadores["cantidad_detenciones"] = len(detenciones)
+                indicadores["tiempo_detenido"] = tiempo_detenido
+                indicadores["porcentaje_detenido"] = 100 * tiempo_detenido / tiempo_total if tiempo_total > 0 else 0.0
 
-                # agregar las detenciones a los resultados 
-                indicadores.update({
-                    "cantidad_detenciones": len(detenciones),
-                    "tiempo_detenido": tiempo_detenido,
-                    "porcentaje_detenido": porcentaje_detenido
-                })
-
-                # guardar los indicadores de cada peaton 
                 resultados[trayectoria.id_peaton] = indicadores
 
-            # guardar resultados del exp
             experimento.resultados_individuales = resultados
-
         return experimentos
 
-    def _calcular_indicadores(
-        self,
-        trayectoria: Trayectoria,
-        fps: float | None,
-    ) -> dict[str, float]:
+    def _velocidades(self, trayectoria: Trayectoria, fps: float) -> list[tuple[int, int, float]]:
+        """Velocidad en ventanas de 1 segundo: (frame_inicio, frame_fin, velocidad)."""
+        obs = trayectoria.observaciones
+        paso = min(int(fps), len(obs) - 1)
+        velocidades = []
+
+        for i in range(len(obs) - paso):
+            a = obs[i]
+            b = obs[i + paso]
+            dt = (b.frame - a.frame) / fps
+            velocidades.append((a.frame, b.frame, hypot(b.x - a.x, b.y - a.y) / dt))
+        return velocidades
+
+    def _calcular_indicadores(self, trayectoria: Trayectoria, fps: float) -> dict[str, float]:
         """Calcula los indicadores individuales de una trayectoria."""
+        inicial = trayectoria.observaciones[0]
+        final = trayectoria.observaciones[-1]
 
-        if fps is None or fps <= 0:
-            raise ValueError("Los FPS deben ser mayores a cero")
-
-        observaciones = sorted(trayectoria.observaciones, key=lambda obs: obs.frame)
-
-        if not observaciones:
-            raise ValueError("La trayectoria no tiene observaciones")
-
-        inicial = observaciones[0]
-        final = observaciones[-1]
-
-        # calcular indicadores usando clase Trayectoria
         distancia_total = trayectoria.calcular_distancia_total()
         desplazamiento = trayectoria.calcular_desplazamiento()
-        velocidad_media = trayectoria.calcular_velocidad_media(fps)
-
-        # calcular tiempo total
-        tiempo_total = (final.frame - inicial.frame) / fps
-
-        # calcular velocidad maxima
-        velocidad_maxima = 0.0
-
-        for i in range(len(observaciones) -1):
-            actual = observaciones[i]
-            siguiente = observaciones[i + 1]
-
-            delta_frames = siguiente.frame - actual.frame
-
-            if delta_frames <= 0:
-                raise ValueError("Hay frames repetidos o invalidos")
-
-            delta_t = delta_frames / fps
-
-            distancia = hypot(siguiente.x - actual.x, siguiente.y - actual.y)
-
-            velocidad = distancia / delta_t
-            velocidad_maxima = max(velocidad_maxima, velocidad)
-
-        # calcular eficiencia de la trayectoria 
-        eficiencia = (desplazamiento / distancia_total if distancia_total > 0 else 0.0)
+        velocidades = [v for _, _, v in self._velocidades(trayectoria, fps)]
 
         return {
-            "x_inicial": float(inicial.x),
-            "y_inicial": float(inicial.y),
-            "x_final": float(final.x),
-            "y_final": float(final.y),
-            "tiempo_total": tiempo_total,
+            "x_inicial": inicial.x,
+            "y_inicial": inicial.y,
+            "x_final": final.x,
+            "y_final": final.y,
+            "tiempo_total": (final.frame - inicial.frame) / fps,
             "distancia_total": distancia_total,
             "desplazamiento": desplazamiento,
-            "velocidad_media": velocidad_media,
-            "velocidad_maxima": velocidad_maxima,
-            "eficiencia": eficiencia
+            "velocidad_media": trayectoria.calcular_velocidad_media(fps),
+            "velocidad_maxima": max(velocidades),
+            "eficiencia": desplazamiento / distancia_total if distancia_total > 0 else 0.0,
         }
-    
-    def _detectar_detenciones(
-        self,
-        trayectoria: Trayectoria,
-        fps: float | None,
-    ) -> list[tuple[int, int]]:
-        """Identifica intervalos de detención de una trayectoria."""
 
-        if fps is None or fps <= 0:
-            raise ValueError("Los FPS deben ser mayores a cero")
-
-        observaciones = sorted(trayectoria.observaciones, key=lambda obs: obs.frame)
-
-        if len(observaciones) < 2:
-            return []
-
-        umbral_velocidad = 0.1
+    def _detectar_detenciones(self, trayectoria: Trayectoria, fps: float) -> list[tuple[int, int]]:
+        """Tramos seguidos en que la velocidad (en 1 s) es menor al umbral."""
         detenciones = []
-        inicio_detencion = None 
-        fin_detencion = None
+        inicio = None
+        fin = None
 
-        for i in range(len(observaciones)- 1):
-            actual = observaciones[i]
-            siguiente = observaciones[i + 1]
+        for frame_a, frame_b, velocidad in self._velocidades(trayectoria, fps):
+            if velocidad < UMBRAL_DETENCION:
+                if inicio is None:
+                    inicio = frame_a
+                fin = frame_b
+            elif inicio is not None:
+                detenciones.append((inicio, fin))
+                inicio = None
 
-            delta_frames = siguiente.frame - actual.frame
-
-            if delta_frames <= 0:
-                raise ValueError("Hay frames repetidos o invalidos")
-
-            delta_t = delta_frames / fps 
-
-            distancia = hypot(siguiente.x - actual.x, siguiente.y - actual.y)
-
-            velocidad = distancia / delta_t
-
-            if velocidad < umbral_velocidad :
-                if inicio_detencion is None :
-                    inicio_detencion = actual.frame
-
-                fin_detencion = siguiente.frame
-
-            elif inicio_detencion is not None:
-                detenciones.append((inicio_detencion, fin_detencion))
-
-                inicio_detencion = None
-                fin_detencion = None
-
-        if inicio_detencion is not None:
-            detenciones.append((inicio_detencion, fin_detencion))
-
+        if inicio is not None:
+            detenciones.append((inicio, fin))
         return detenciones
-
-        
