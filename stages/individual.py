@@ -69,21 +69,30 @@ class AnalisisIndividual(EtapaPipeline[list[Experimento], list[Experimento]]):
             "eficiencia": desplazamiento / distancia_total if distancia_total > 0 else 0.0,
         }
 
+
     def _detectar_detenciones(self, trayectoria: Trayectoria, fps: float) -> list[tuple[int, int]]:
-        """Tramos seguidos en que la velocidad (en 1 s) es menor al umbral."""
+        """Detecta detenciones y fusiona intervalos superpuestos."""
+
+        if fps <= 0:
+            raise ValueError("los FPS deben ser mayores a cero")
+
         detenciones = []
-        inicio = None
-        fin = None
 
         for frame_a, frame_b, velocidad in self._velocidades(trayectoria, fps):
-            if velocidad < UMBRAL_DETENCION:
-                if inicio is None:
-                    inicio = frame_a
-                fin = frame_b
-            elif inicio is not None:
-                detenciones.append((inicio, fin))
-                inicio = None
 
-        if inicio is not None:
-            detenciones.append((inicio, fin))
+            if velocidad >= UMBRAL_DETENCION or frame_b <= frame_a:
+                continue
+            if detenciones and frame_a <= detenciones[-1][1]:
+
+                inicio_anterior, fin_anterior = detenciones[-1]
+
+                detenciones[-1] = (
+                    inicio_anterior,
+                    max(fin_anterior, frame_b)
+                )
+
+            else:
+                detenciones.append((frame_a, frame_b))
+
         return detenciones
+
