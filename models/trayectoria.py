@@ -2,74 +2,71 @@
 
 from dataclasses import dataclass, field
 
+from funciones.movimiento import (
+    UMBRAL_DETENCION,
+    desplazamiento,
+    detectar_detenciones,
+    exigir_fps_positivo,
+    distancia_total,
+    por_frame,
+    tiempo_total,
+    ventanas_de_un_segundo,
+)
+
 from .observacion import Observacion
 
-from math import sqrt
 
 @dataclass
 class Trayectoria:
-    """Representa las observaciones y cálculos propios de un peatón."""
+    """Observaciones de un peatón y los cálculos propios de su recorrido.
+
+    Cada método ordena las observaciones por frame y delega el cálculo en
+    funciones puras (`funciones.movimiento`); la trayectoria no se modifica.
+    """
 
     id_peaton: int
     observaciones: list[Observacion] = field(default_factory=list)
 
     def calcular_distancia_total(self) -> float:
-        """Calcula la distancia total recorrida por el peatón."""
-
-        observaciones = sorted(self.observaciones, key=lambda obs: obs.frame)
-        distancia_total = 0.0
-
-        for i in range(len(observaciones)- 1):
-            actual = observaciones[i]
-            siguiente = observaciones[i + 1]
-
-            dx = siguiente.x - actual.x
-            dy = siguiente.y - actual.y
-
-            distancia = sqrt(dx**2 + dy**2)
-            distancia_total += distancia
-
-        return distancia_total
+        """Distancia total recorrida por el peatón."""
+        return distancia_total(por_frame(self.observaciones))
 
     def calcular_desplazamiento(self) -> float:
-        """Calcula el desplazamiento entre el inicio y el final."""
-
-        if len(self.observaciones) < 2:
-            return 0.0
-
-        observaciones = sorted(self.observaciones, key=lambda obs: obs.frame)
-
-        inicial = observaciones[0]
-        final = observaciones[-1]
-
-        dx = final.x - inicial.x
-        dy = final.y - inicial.y
-
-        desplazamiento = sqrt(dx**2 + dy**2)
-
-        return desplazamiento
+        """Distancia directa entre la posición inicial y la final."""
+        return desplazamiento(por_frame(self.observaciones))
 
     def calcular_velocidad_media(self, fps: float) -> float:
-        """Calcula la velocidad media usando la frecuencia del experimento."""
-
-        if fps <= 0:
-            raise ValueError("Los FPS deben ser mayores a 0.")
-
+        """Velocidad media (distancia total / tiempo total) según la frecuencia del experimento."""
+        exigir_fps_positivo(fps)
         if len(self.observaciones) < 2:
             return 0.0
+        tiempo = tiempo_total(por_frame(self.observaciones), fps)
+        return self.calcular_distancia_total() / tiempo if tiempo > 0 else 0.0
 
-        observaciones = sorted(self.observaciones, key=lambda obs: obs.frame)
+    def calcular_indicadores(self, fps: float, umbral_detencion: float = UMBRAL_DETENCION) -> dict[str, float]:
+        """Todos los indicadores individuales: recorrido, velocidades, eficiencia y detenciones."""
+        exigir_fps_positivo(fps)
+        obs = por_frame(self.observaciones)
+        ventanas = ventanas_de_un_segundo(obs, fps)
+        detenciones = detectar_detenciones(ventanas, umbral_detencion)
 
-        frame_inicial = observaciones[0].frame
-        frame_final = observaciones[-1].frame
+        distancia = self.calcular_distancia_total()
+        despl = self.calcular_desplazamiento()
+        tiempo = tiempo_total(obs, fps)
+        t_detenido = sum((fin - inicio) / fps for inicio, fin in detenciones)
 
-        tiempo_total = (frame_final - frame_inicial) / fps
-
-        if tiempo_total <= 0:
-            return 0.0
-
-        distancia_total = self.calcular_distancia_total() 
-
-        velocidad_media = distancia_total / tiempo_total
-
-        return velocidad_media       
+        return {
+            "x_inicial": obs[0].x,
+            "y_inicial": obs[0].y,
+            "x_final": obs[-1].x,
+            "y_final": obs[-1].y,
+            "tiempo_total": tiempo,
+            "distancia_total": distancia,
+            "desplazamiento": despl,
+            "velocidad_media": self.calcular_velocidad_media(fps),
+            "velocidad_maxima": max(v for _, _, v in ventanas),
+            "eficiencia": despl / distancia if distancia > 0 else 0.0,
+            "cantidad_detenciones": len(detenciones),
+            "tiempo_detenido": t_detenido,
+            "porcentaje_detenido": 100 * t_detenido / tiempo if tiempo > 0 else 0.0,
+        }

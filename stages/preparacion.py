@@ -1,6 +1,9 @@
 """Etapa 2: validación, organización y reconstrucción de trayectorias."""
 
 import math
+from dataclasses import replace
+from itertools import groupby
+from operator import attrgetter
 
 from models.experimento import Experimento
 from models.observacion import Observacion
@@ -9,58 +12,44 @@ from pipeline.contexto import ContextoPipeline
 from pipeline.etapa import EtapaPipeline
 
 
+def es_valida(obs: Observacion) -> bool:
+    """Frame no negativo y coordenadas x e y numéricas."""
+    return obs.frame >= 0 and not (math.isnan(obs.x) or math.isnan(obs.y))
+
+
+def validar(observaciones: list[Observacion]) -> list[Observacion]:
+    """Quita observaciones imposibles y repetidas (se conserva la primera de cada par id-frame)."""
+    primeras = {
+        (obs.id_peaton, obs.frame): obs
+        for obs in reversed([o for o in observaciones if es_valida(o)])
+    }
+    return list(primeras.values())
+
+
+def reconstruir_trayectorias(observaciones: list[Observacion]) -> list[Trayectoria]:
+    """Una trayectoria por peatón (orden temporal); se necesitan al menos 2 puntos."""
+    ordenadas = sorted(observaciones, key=lambda obs: (obs.id_peaton, obs.frame))
+    trayectorias = [
+        Trayectoria(id_peaton, list(grupo))
+        for id_peaton, grupo in groupby(ordenadas, key=attrgetter("id_peaton"))
+    ]
+    return [t for t in trayectorias if len(t.observaciones) >= 2]
+
+
 class PreparacionTrayectorias(EtapaPipeline[list[Experimento], list[Experimento]]):
     """Limpia las observaciones y arma una trayectoria por peatón."""
 
     def ejecutar(self, experimentos: list[Experimento], contexto: ContextoPipeline) -> list[Experimento]:
-        for exp in experimentos:
-            validas = self._validar_observaciones(exp.observaciones)
-            por_peaton = self._organizar_observaciones(validas)
-            exp.trayectorias = self._reconstruir_trayectorias(por_peaton)
+        return [self._preparar(experimento) for experimento in experimentos]
 
-            invalidas = len(exp.observaciones) - len(validas)
-            print(f"  {exp.nombre}: {invalidas} observaciones inválidas, "
-                  f"{len(exp.trayectorias)} trayectorias")
+    def _preparar(self, experimento: Experimento) -> Experimento:
+        validas = validar(experimento.observaciones)
+        trayectorias = reconstruir_trayectorias(validas)
 
-            if exp.fps is None:
-                raise ValueError(f"{exp.nombre} no tiene fps: use --fps")
-        return experimentos
+        invalidas = len(experimento.observaciones) - len(validas)
+        print(f"  {experimento.nombre}: {invalidas} observaciones inválidas, "
+              f"{len(trayectorias)} trayectorias")
 
-    def _validar_observaciones(self, observaciones: list[Observacion]) -> list[Observacion]:
-        """Elimina observaciones con valores imposibles o repetidas."""
-        validas = []
-        vistas = set()   # pares (id, frame) que ya aparecieron
-
-        for obs in observaciones:
-            clave = (obs.id_peaton, obs.frame)
-
-            if obs.frame < 0:
-                continue                      # frame negativo: imposible
-            if math.isnan(obs.x) or math.isnan(obs.y):
-                continue                      # coordenada vacía (NaN)
-            if clave in vistas:
-                continue                      # mismo peatón dos veces en el mismo frame
-
-            vistas.add(clave)
-            validas.append(obs)
-        return validas
-
-    def _organizar_observaciones(self, observaciones: list[Observacion]) -> dict[int, list[Observacion]]:
-        """Agrupa las observaciones por peatón y las ordena por frame."""
-        por_peaton = {}
-        for obs in observaciones:
-            if obs.id_peaton not in por_peaton:
-                por_peaton[obs.id_peaton] = []
-            por_peaton[obs.id_peaton].append(obs)
-
-        for lista in por_peaton.values():
-            lista.sort(key=lambda obs: obs.frame)
-        return por_peaton
-
-    def _reconstruir_trayectorias(self, por_peaton: dict[int, list[Observacion]]) -> list[Trayectoria]:
-        """Crea una Trayectoria por peatón (se necesitan al menos 2 puntos)."""
-        return [
-            Trayectoria(id_peaton, lista)
-            for id_peaton, lista in sorted(por_peaton.items())
-            if len(lista) >= 2
-        ]
+        if experimento.fps is None:
+            raise ValueError(f"{experimento.nombre} no tiene fps: use --fps")
+        return replace(experimento, trayectorias=trayectorias)

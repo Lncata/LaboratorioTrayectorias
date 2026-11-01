@@ -1,7 +1,6 @@
-
 """Etapa de comparación de experimentos."""
 
-from statistics import fmean
+from statistics import StatisticsError, correlation, fmean
 
 from models.experimento import Experimento
 from models.resultado_analisis import ResultadoAnalisis
@@ -9,122 +8,44 @@ from pipeline.contexto import ContextoPipeline
 from pipeline.etapa import EtapaPipeline
 
 
-class ComparacionExperimentos(
-    EtapaPipeline[list[Experimento], ResultadoAnalisis]
-):
+def resumen_experimento(exp: Experimento) -> dict[str, float]:
+    """Indicadores comparables de un experimento (con el nombre como prefijo)."""
+    individuales = list(exp.resultados_individuales.values())
+    if not individuales:
+        raise ValueError(f"{exp.nombre} no tiene resultados individuales.")
+    faltantes = [c for c in ("densidad_media", "flujo_medio") if c not in exp.resultados_colectivos]
+    if faltantes:
+        raise ValueError(f"Falta {faltantes[0]} en {exp.nombre}.")
+
+    promedio = lambda clave: fmean(ind[clave] for ind in individuales)
+    return {
+        f"{exp.nombre}_cantidad_peatones": float(len(individuales)),
+        f"{exp.nombre}_velocidad_media": promedio("velocidad_media"),
+        f"{exp.nombre}_densidad_media": exp.resultados_colectivos["densidad_media"],
+        f"{exp.nombre}_flujo_medio": exp.resultados_colectivos["flujo_medio"],
+        f"{exp.nombre}_distancia_media": promedio("distancia_total"),
+        f"{exp.nombre}_tiempo_medio": promedio("tiempo_total"),
+    }
+
+
+def correlacion_densidad_velocidad(experimentos: list[Experimento], comparacion: dict[str, float]) -> dict[str, float]:
+    """Correlación de Pearson entre densidad media y velocidad media de los experimentos."""
+    densidades = [comparacion[f"{e.nombre}_densidad_media"] for e in experimentos]
+    velocidades = [comparacion[f"{e.nombre}_velocidad_media"] for e in experimentos]
+    try:
+        return {"correlacion_densidad_velocidad": correlation(densidades, velocidades)}
+    except StatisticsError:  # menos de 2 experimentos o valores constantes
+        return {}
+
+
+class ComparacionExperimentos(EtapaPipeline[list[Experimento], ResultadoAnalisis]):
     """Compara los indicadores de varios experimentos."""
 
-    def ejecutar(
-        self,
-        experimentos: list[Experimento],
-        contexto: ContextoPipeline,
-    ) -> ResultadoAnalisis:
-        """Reune los experimentos y sus resultados comparativos."""
-
+    def ejecutar(self, experimentos: list[Experimento], contexto: ContextoPipeline) -> ResultadoAnalisis:
         if not experimentos:
             raise ValueError("No se recibieron experimentos para comparar.")
+        return ResultadoAnalisis(experimentos=experimentos, comparacion=self._comparar(experimentos))
 
-        comparacion = self._comparar(experimentos)
-
-        return ResultadoAnalisis(
-            experimentos=experimentos,
-            comparacion=comparacion
-        )
-
-    def _comparar(
-        self,
-        experimentos: list[Experimento]
-    ) -> dict[str, float]:
-        """Calcula indicadores comparables entre experimentos."""
-
-        comparacion = {}
-        densidades = []
-        velocidades = []
-
-        for exp in experimentos:
-
-            individuales = list(
-                exp.resultados_individuales.values()
-            )
-
-            if not individuales:
-                raise ValueError(
-                    f"{exp.nombre} no tiene resultados individuales."
-                )
-
-            for clave in ("densidad_media", "flujo_medio"):
-                if clave not in exp.resultados_colectivos:
-                    raise ValueError(
-                        f"Falta {clave} en {exp.nombre}."
-                    )
-
-            # Promedios individuales del experimento
-            velocidad_media = fmean(
-                ind["velocidad_media"] for ind in individuales
-            )
-
-            distancia_media = fmean(
-                ind["distancia_total"] for ind in individuales
-            )
-
-            tiempo_medio = fmean(
-                ind["tiempo_total"] for ind in individuales
-            )
-
-            # Resultados obtenidos del analisis espacial
-            densidad_media = exp.resultados_colectivos[
-                "densidad_media"
-            ]
-
-            flujo_medio = exp.resultados_colectivos[
-                "flujo_medio"
-            ]
-
-            # Guardar los indicadores del experimento
-            prefijo = exp.nombre
-
-            comparacion[f"{prefijo}_cantidad_peatones"] = float(
-                len(individuales)
-            )
-
-            comparacion[f"{prefijo}_velocidad_media"] = velocidad_media
-            comparacion[f"{prefijo}_densidad_media"] = densidad_media
-            comparacion[f"{prefijo}_flujo_medio"] = flujo_medio
-            comparacion[f"{prefijo}_distancia_media"] = distancia_media
-            comparacion[f"{prefijo}_tiempo_medio"] = tiempo_medio
-
-            densidades.append(densidad_media)
-            velocidades.append(velocidad_media)
-
-        # Relacion entre densidad y velocidad entre experimentos
-        if len(densidades) >= 2:
-
-            media_densidades = fmean(densidades)
-            media_velocidades = fmean(velocidades)
-
-            suma_cruzada = sum(
-                (d - media_densidades) * (v - media_velocidades)
-                for d, v in zip(densidades, velocidades)
-            )
-
-            suma_densidades = sum(
-                (d - media_densidades) ** 2
-                for d in densidades
-            )
-
-            suma_velocidades = sum(
-                (v - media_velocidades) ** 2
-                for v in velocidades
-            )
-
-            if suma_densidades > 0 and suma_velocidades > 0:
-
-                correlacion = suma_cruzada / (
-                    suma_densidades * suma_velocidades
-                ) ** 0.5
-
-                comparacion[
-                    "correlacion_densidad_velocidad"
-                ] = correlacion
-
-        return comparacion
+    def _comparar(self, experimentos: list[Experimento]) -> dict[str, float]:
+        comparacion = {clave: valor for exp in experimentos for clave, valor in resumen_experimento(exp).items()}
+        return {**comparacion, **correlacion_densidad_velocidad(experimentos, comparacion)}

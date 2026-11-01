@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class Observacion:
-    """Posición de un peatón en un frame. Coordenadas en metros."""
+    """Posición de un peatón en un frame. Coordenadas en metros (inmutable)."""
 
     id_peaton: int
     frame: int

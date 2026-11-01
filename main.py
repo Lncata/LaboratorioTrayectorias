@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
+from funciones.movimiento import UMBRAL_DETENCION
 from pipeline.contexto import ContextoPipeline
 from pipeline.pipeline import Pipeline
 from stages import (
@@ -14,6 +15,17 @@ from stages import (
     ExportacionResultados,
     PreparacionTrayectorias,
 )
+
+
+def numero_positivo(texto: str) -> float:
+    """Convierte el argumento a número y exige que sea mayor que cero."""
+    try:
+        valor = float(texto)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"'{texto}' no es un número")
+    if valor <= 0:
+        raise argparse.ArgumentTypeError(f"debe ser mayor que 0 (recibido: {texto})")
+    return valor
 
 
 def crear_parser() -> argparse.ArgumentParser:
@@ -35,7 +47,7 @@ def crear_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--fps",
-        type=float,
+        type=numero_positivo,
         default=None,
         help="Frecuencia de muestreo del experimento, en cuadros por segundo. "
         "Si no se indica, se lee del encabezado de cada archivo.",
@@ -45,6 +57,13 @@ def crear_parser() -> argparse.ArgumentParser:
         choices=["m", "cm"],
         default="m",
         help="Unidad de las coordenadas en los archivos (por defecto: m).",
+    )
+    parser.add_argument(
+        "--umbral-detencion",
+        type=numero_positivo,
+        default=UMBRAL_DETENCION,
+        help="Velocidad (m/s) bajo la cual un peatón se considera detenido "
+        f"(por defecto: {UMBRAL_DETENCION}).",
     )
     return parser
 
@@ -57,6 +76,7 @@ def main(argumentos: Sequence[str] | None = None) -> int:
         ruta_salida=configuracion.output,
         fps=configuracion.fps,
         unidad=configuracion.unidad,
+        umbral_detencion=configuracion.umbral_detencion,
     )
     etapas = [
         CargaExperimentos(),        # 1. archivos -> list[Experimento]
@@ -73,6 +93,7 @@ def main(argumentos: Sequence[str] | None = None) -> int:
     print(f"  Salida: {contexto.ruta_salida}")
     frecuencia = str(contexto.fps) if contexto.fps is not None else "no especificada"
     print(f"  Frecuencia (fps): {frecuencia}")
+    print(f"  Umbral de detención: {contexto.umbral_detencion} m/s")
 
     if not contexto.ruta_entrada.exists():
         print(f"Error: la ruta de entrada '{contexto.ruta_entrada}' no existe.")

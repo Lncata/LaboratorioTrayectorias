@@ -13,7 +13,7 @@ class Pipeline:
         self._etapas = list(etapas)
 
     def ejecutar(self, contexto: ContextoPipeline) -> bool:
-        """Pasa cada resultado a la etapa siguiente y se detiene ante una etapa pendiente."""
+        """Pasa cada resultado a la etapa siguiente; se detiene ante una etapa pendiente o un error de datos."""
         resultado: Any = None
         for etapa in self._etapas:
             nombre_etapa = type(etapa).__name__
@@ -23,5 +23,9 @@ class Pipeline:
             except NotImplementedError as error:
                 detalle = str(error) or "Etapa pendiente de implementación"
                 print(f"Pipeline detenido en {nombre_etapa}: {detalle}.")
+                return False
+            except (FileNotFoundError, ValueError, OSError) as error:
+                # datos o rutas inválidos: se informa la causa en vez de mostrar un traceback
+                print(f"Error en {nombre_etapa}: {error}")
                 return False
         return True

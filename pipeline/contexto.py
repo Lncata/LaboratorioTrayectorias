@@ -3,8 +3,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from funciones.movimiento import UMBRAL_DETENCION
 
-@dataclass
+
+@dataclass(frozen=True)
 class ContextoPipeline:
     """Contiene únicamente las opciones de ejecución del programa."""
 
@@ -12,3 +14,4 @@ class ContextoPipeline:
     ruta_salida: Path
     fps: float | None = None
     unidad: str = "m"  # "m" o "cm"
+    umbral_detencion: float = UMBRAL_DETENCION  # m/s

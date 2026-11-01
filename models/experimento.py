@@ -6,9 +6,13 @@ from .observacion import Observacion
 from .trayectoria import Trayectoria
 
 
-@dataclass
+@dataclass(frozen=True)
 class Experimento:
-    """Un archivo de datos: sus observaciones, trayectorias y resultados."""
+    """Un archivo de datos: sus observaciones, trayectorias y resultados.
+
+    Es inmutable: cada etapa del pipeline devuelve una copia nueva
+    (`dataclasses.replace`) con los campos que calculó.
+    """
 
     nombre: str
     fps: float | None = None

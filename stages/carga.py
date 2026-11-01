@@ -55,7 +55,7 @@ class CargaExperimentos(EtapaPipeline[None, list[Experimento]]):
                 # Comentario: si trae el framerate y no nos dieron --fps, lo guardamos
                 if linea.startswith("#"):
                     if "framerate" in linea and fps is None:
-                        fps = float(linea.split(":", 1)[1].strip().split()[0])
+                        fps = self._leer_framerate(linea, archivo.name)
                     continue
 
                 partes = linea.split()
@@ -80,3 +80,14 @@ class CargaExperimentos(EtapaPipeline[None, list[Experimento]]):
             lineas_descartadas=descartadas,
             observaciones=observaciones,
         )
+
+    @staticmethod
+    def _leer_framerate(linea: str, nombre_archivo: str) -> float:
+        """Extrae los fps de una línea como '# framerate: 16 fps'."""
+        try:
+            fps = float(linea.split(":", 1)[1].strip().split()[0])
+        except (IndexError, ValueError):
+            raise ValueError(f"framerate ilegible en {nombre_archivo}: '{linea}'. Use --fps.")
+        if fps <= 0:
+            raise ValueError(f"framerate inválido ({fps}) en {nombre_archivo}.")
+        return fps
